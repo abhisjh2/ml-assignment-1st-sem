@@ -1,4 +1,8 @@
-# Assignment 1 — End-to-End Machine Learning Pipeline
+# AI/ML — 1st Semester, 1st Assignment
+
+This repository contains the code, data, figures, and report for the first AI/ML assignment in the MTech first semester.
+
+## Assignment: End-to-End Machine Learning Pipeline
 
 **Problem:** Predict whether an online shopping session ends in a purchase (`Revenue`) from browsing behaviour and session context.
 **Track:** A — scikit-learn; five model families (Logistic Regression, Decision Tree, Random Forest, Extra Trees, Histogram Gradient Boosting) tuned with grid search and 5-fold stratified cross-validation.

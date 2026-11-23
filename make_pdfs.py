@@ -32,6 +32,7 @@ summary = json.loads((ROOT / 'output' / 'summary.json').read_text())
 best = results.iloc[0]                        # CSV is sorted by CV AP (the selection rule)
 by_name = results.set_index('Model')
 best_params = ast.literal_eval(best['Best params'])
+boosting = by_name.loc['Gradient Boosting']
 
 # --- Styles ----------------------------------------------------------------------------------
 styles = getSampleStyleSheet()
@@ -182,6 +183,10 @@ story = [
                ('Gradient Boosting', 'HistGradientBoosting, early stopping; learning rate ∈ {0.05, 0.1}; '
                 'leaves ∈ {15, 31}; min leaf ∈ {20, 50}; L2 ∈ {0, 1}')]],
           [34 * mm, 78 * mm, 62 * mm]),
+    para('<b>Histogram Gradient Boosting.</b> The classifier adds trees one at a time to reduce prediction '
+         'loss. It groups numeric values into bins to speed up finding splits. We compared 16 settings. '
+         'Training used up to 300 boosting iterations and stopped early if the loss on an internal '
+         'validation set failed to improve sufficiently for 20 consecutive iterations.'),
 
     heading('6. Results and model comparison'),
     table([[white(h) for h in ['Model', 'CV AP (± sd)', 'Test AP', 'ROC-AUC', 'Precision', 'Recall',
@@ -209,12 +214,12 @@ story = [
     heading('7. Final model and interpretation'),
     para(f'<b>Selected model: {best["Model"]}</b> '
          f'({", ".join(f"{k}={v}" for k, v in best_params.items())}). It has the highest mean CV AP '
-         f'({best["CV AP"]:.3f} ± {best["CV AP std"]:.3f}), the rule fixed before using the test set. Its '
-         f'hold-out AP ({best["Test AP"]:.3f}) is close to its CV score, so tuning did not overfit, and at the '
-         f'default threshold it offers F1 {best["Test F1"]:.3f} with precision {best["Test Precision"]:.2f} and '
-         f'recall {best["Test Recall"]:.2f}. The runners-up are within one standard deviation, and a model that '
-         'scores marginally higher on the hold-out was not chosen on that basis, because that would be '
-         'selecting on the test set.'),
+         f'({best["CV AP"]:.3f} ± {best["CV AP std"]:.3f}), the criterion set before testing. Its hold-out '
+         f'AP is {best["Test AP"]:.3f} and its F1 is {best["Test F1"]:.3f} at the 0.5 threshold.'),
+    para(f'<b>Gradient Boosting comparison.</b> Mean CV AP was {boosting["CV AP"]:.3f}, with hold-out '
+         f'AP of {boosting["Test AP"]:.3f} and ROC-AUC of {boosting["Test ROC-AUC"]:.3f}. At the 0.5 threshold '
+         f'it found {boosting["Test Recall"]:.1%} of buyers, and {boosting["Test Precision"]:.1%} of its '
+         'purchase predictions were correct. Model selection followed the mean CV AP ranking.'),
     para('Permutation importance (drop in hold-out AP when a column is shuffled) ranks '
          + ', '.join(f'{d["feature"]} ({d["mean AP drop"]:.3f})' for d in summary['top_features'])
          + ' highest, matching the EDA: seasonality, visitor type and engagement drive predictions. '
