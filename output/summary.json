@@ -1,0 +1,34 @@
+{
+  "base_rate": 0.15474452554744525,
+  "pagevalues_alone_auc": 0.8632941946302111,
+  "best_model": "Extra Trees",
+  "best_params": {
+    "max_depth": 16,
+    "max_features": 0.5,
+    "min_samples_leaf": 8
+  },
+  "cv_ap_without_pagevalues": 0.38489952497403307,
+  "cv_ap_with_pagevalues": 0.7538533121748457,
+  "top_features": [
+    {
+      "feature": "Month",
+      "mean AP drop": 0.0737
+    },
+    {
+      "feature": "VisitorType",
+      "mean AP drop": 0.0381
+    },
+    {
+      "feature": "ExitRates",
+      "mean AP drop": 0.0303
+    },
+    {
+      "feature": "ProductRelated_Duration",
+      "mean AP drop": 0.0185
+    },
+    {
+      "feature": "TrafficType",
+      "mean AP drop": 0.014
+    }
+  ]
+}

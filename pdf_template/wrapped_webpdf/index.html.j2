@@ -1,0 +1,12 @@
+{#- Lab template for `nbconvert --to webpdf` that wraps long code and output lines
+    instead of cutting them off at the page edge. -#}
+{%- extends 'lab/index.html.j2' -%}
+{%- block html_head_css -%}
+{{ super() }}
+<style>
+  .jp-InputArea-editor pre, .highlight pre, .jp-OutputArea-output pre {
+    white-space: pre-wrap !important;
+    overflow-wrap: anywhere;
+  }
+</style>
+{%- endblock html_head_css -%}

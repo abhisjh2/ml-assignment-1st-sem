@@ -1,9 +1,11 @@
-numpy==2.0.2
+# numpy 2.0.x is the last series for Python 3.9/3.10; 2.3.x is needed for Python 3.13.
+numpy==2.0.2; python_version < "3.11"
+numpy==2.3.5; python_version >= "3.11"
 pandas==2.3.3
 scikit-learn==1.6.1
 matplotlib==3.9.4
 seaborn==0.13.2
 jupyter==1.1.1
 nbformat==5.10.4
-nbconvert==7.17.2
+nbconvert[webpdf]==7.17.2
 reportlab==4.3.1

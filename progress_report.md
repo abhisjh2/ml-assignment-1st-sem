@@ -1,9 +1,19 @@
 # Assignment 1 — Team Progress and Methods Report
 
+## November 23, 2026 revision
+
+The current notebook uses the same UCI data and validation split as the original. It encodes the browser, OS, region, and traffic codes as categories, adds the product duration share, and compares five model families. Extra Trees leads cross-validation with average precision of 0.3849. Histogram Gradient Boosting has the highest test average precision (0.3719). Including `PageValues` in the sensitivity check raises cross-validation average precision to 0.7539, so the main model still excludes it.
+
+The updated notebook, HTML export, report, and results are listed in [the README](README.md). The public saved outputs redact the original laptop name. The virtual lab run, setup screenshot, final notebook PDF, and student and course details are still pending. Revisit whether identical rows should be kept together in the validation split. With the current split, 29 test rows have exact matches in training.
+
+## Original four-model run
+
+The notes below describe the baseline at [commit `3c1255e`](https://github.com/abhisjh2/ml-assignment-1st-sem/tree/3c1255e797506b98cc739369adbd4c29e6df574b).
+
 **Project:** End-to-End Machine Learning Pipeline  
 **Problem:** Predict whether an online shopping session results in a purchase.  
 **Track:** A — scikit-learn models  
-**Current status:** Core pipeline implemented; notebook run top-to-bottom; comparison results and report exported.
+**Status at the time:** Core pipeline implemented; notebook run top-to-bottom; comparison results and report exported.
 
 ## 1. Objective and motivation
 
