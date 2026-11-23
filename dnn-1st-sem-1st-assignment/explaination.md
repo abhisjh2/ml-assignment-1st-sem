@@ -1,269 +1,216 @@
-# Cats vs Dogs DNN Assignment Explained
+# How I Did the Cats vs Dogs Assignment
 
-The assignment trains a neural network to tell whether a photograph shows a cat or a dog. Each photo goes in as a row of pixel values. The model gives back two scores, one for each class. The class with the higher score becomes the prediction.
+For this assignment I used a Deep Neural Network (DNN) to sort photos into two groups, cats and dogs. I took photos that already had labels and used most of them to train the model. I kept the rest aside to see how the model would do on new photos.
 
-The saved run got **3,338 out of 4,993 test photos right**, for **66.85% test accuracy**. It used a Dense network with two hidden layers, trained with stochastic gradient descent (SGD). Five-fold cross-validation helped choose the learning rate before the final test.
-
-The notebook has the runnable code, the saved cell outputs, and the plots. The PDF contains the same completed assignment in a format you can read without opening Jupyter. [Jupyter notebook](DL_assignment_Student2026CS05046.ipynb) · [PDF version](DL_assignment_student2026CS05046.pdf)
+I got **3,338 out of 4,993 test photos right**, which is **66.85% accuracy**. I used Keras for the model and Python for the rest of the work. The code, plots, and outputs are in the notebook. [Jupyter notebook](DL_assignment_Student2026CS05046.ipynb) · [PDF version](DL_assignment_student2026CS05046.pdf)
 
 ## Contents
 
-1. [What the model learns](#1-what-the-model-learns)
-2. [Where the photos come from](#2-where-the-photos-come-from)
-3. [How the photos become numbers](#3-how-the-photos-become-numbers)
-4. [How the data is split](#4-how-the-data-is-split)
-5. [How the Dense network works](#5-how-the-dense-network-works)
-6. [How training changes the weights](#6-how-training-changes-the-weights)
-7. [How cross-validation chooses the learning rate](#7-how-cross-validation-chooses-the-learning-rate)
-8. [What the training curves show](#8-what-the-training-curves-show)
-9. [What the test results mean](#9-what-the-test-results-mean)
-10. [What the assignment shows and where it is limited](#10-what-the-assignment-shows-and-where-it-is-limited)
-11. [How to run the notebook again](#11-how-to-run-the-notebook-again)
+1. [What I wanted the model to do](#1-what-i-wanted-the-model-to-do)
+2. [Getting the photos and labels](#2-getting-the-photos-and-labels)
+3. [Getting the photos ready for the model](#3-getting-the-photos-ready-for-the-model)
+4. [Splitting the data](#4-splitting-the-data)
+5. [Building the network](#5-building-the-network)
+6. [Training the model](#6-training-the-model)
+7. [Trying two learning rates](#7-trying-two-learning-rates)
+8. [Reading the training plots](#8-reading-the-training-plots)
+9. [Checking the test results](#9-checking-the-test-results)
+10. [What I noticed](#10-what-i-noticed)
+11. [Running the notebook again](#11-running-the-notebook-again)
 
-## 1. What the model learns
+## 1. What I wanted the model to do
 
-This is **supervised learning** because the training examples come with answers. The answer, or **label**, is the type of animal in the photo. The notebook uses two labels, so the task is **binary classification**.
+My input is one photo. The model has to give one answer for the whole photo, Cat or Dog. Since there are two possible answers, this is called **binary classification**. It is also an example of **supervised learning** because the photos used for training come with the correct answers.
 
-During training, the network makes a prediction, compares it with the known label, and adjusts its weights. It repeats that process across many labelled photos. Once training is over, the network takes the pixels of a test photo and predicts a label. The evaluation code uses the known test label to score the prediction.
+During training, the model makes a guess and compares it with the answer. It uses the difference to adjust its weights. Later, when I test it, I give it only the pixels to make a guess. I use the labels after that to check how many guesses were right.
 
-The model assigns one label to the whole image. For a photo with multiple animals, it still returns one of the two classes. It has no output for the animal's position or for images outside these two classes.
+I used Dense layers as required in the assignment. A Dense layer expects a row of numbers, so the first part of the notebook is about turning photos into rows the model can use.
 
-The assignment asks for a Dense neural network. Every trainable layer in this notebook is a Dense layer. The notebook resizes and flattens each photo before handing it to the network. Image loading, resizing, and label encoding happen in the data preparation cells.
+## 2. Getting the photos and labels
 
-## 2. Where the photos come from
+I used Microsoft's PetImages dataset. It comes as a ZIP file with the cat and dog photos in separate folders. I used the folder name as the answer for each photo. In my code, `Cat` is `0` and `Dog` is `1`. [Microsoft dataset download](https://www.microsoft.com/en-us/download/details.aspx?id=54765) · [TensorFlow Datasets catalog](https://www.tensorflow.org/datasets/catalog/cats_vs_dogs)
 
-The notebook reads Microsoft's `kagglecatsanddogs_5340.zip` archive, the source data for the Cats vs Dogs entry in the TensorFlow Datasets catalog. The archive puts the JPEGs in two folders. `PetImages/Cat/` supplies the cat labels, and `PetImages/Dog/` supplies the dog labels. The order of `class_names = ["Cat", "Dog"]` gives cats the integer `0` and dogs the integer `1`. [TensorFlow Datasets catalog](https://www.tensorflow.org/datasets/catalog/cats_vs_dogs) · [Microsoft dataset download](https://www.microsoft.com/en-us/download/details.aspx?id=54765)
+The loading part of the notebook works like this.
 
-### What the loading code does
+1. `keras.utils.get_file()` gets the ZIP file. If the file is already in the cache, it can use that copy. I pass in a checksum so Keras can check that the ZIP matches the expected file.
+2. `ZipFile` lets me read the `.jpg` files straight from the ZIP. The code goes through `PetImages/Cat/` first and `PetImages/Dog/` second.
+3. Pillow opens each photo and prepares it as a small RGB image. `np.asarray()` converts the image into an array of numbers. I add the image and its label in the same order, so they stay matched.
+4. If reading a photo raises one of the errors or warnings handled in the code, I skip that file and add one to `skipped`. After loading, `np.stack(images)` puts the readable images into one array.
 
-1. `keras.utils.get_file()` finds the ZIP in Keras's local cache or downloads it from Microsoft. The `file_hash` argument gives Keras the expected SHA-256 checksum for the archive. A matching checksum verifies that the archive bytes match the expected file.
-2. `ZipFile` lets the notebook open JPEGs directly inside the archive. The loops consider `.jpg` files under the two animal folders, in sorted filename order.
-3. Pillow opens each photo, converts it to RGB, and resizes it to 32 × 32. `np.asarray(image)` turns the prepared photo into an array. The code appends its label only after a successful load.
-4. The `try` block handles image-reading failures. It also treats Pillow `UserWarning`s raised inside the block as errors. Files caught by that block increase `skipped` and contribute neither pixels nor a label.
-5. `np.stack(images)` collects the readable photos into one array. At this point the array has one axis for photos, two for image position, and one for color channels. The labels form a separate one-dimensional array in the same order.
-
-### What came out of the loading step
-
-| Count | Value |
+| What I counted | Photos |
 | --- | ---: |
-| JPEG files found in the archive | 25,000 |
-| JPEG files skipped by the loading checks | 3 |
-| Readable cat photos | 12,499 |
-| Readable dog photos | 12,498 |
+| JPEGs in the ZIP | 25,000 |
+| Files skipped | 3 |
+| Readable cats | 12,499 |
+| Readable dogs | 12,498 |
 | Total readable photos | 24,997 |
 
-The first plot uses `np.bincount(labels)` to count the two classes. It counts the readable photos **before** duplicate removal and splitting. One photo separates the two classes at this stage, so the bars are almost the same height. The counts here come from reading the original archive with Pillow in this notebook. The catalog describes the dataset produced by its own loading pipeline.
+I used `np.bincount(labels)` to make the first plot. It counts the readable photos before I remove duplicates. The two bars are almost the same height because there is only a one-photo difference. These are the counts from opening the ZIP with Pillow in this run.
 
-## 3. How the photos become numbers
+## 3. Getting the photos ready for the model
 
-### Give every photo the same shape
+### Resizing and converting to RGB
 
-Original JPEGs can have different widths, heights, and color formats. A Dense layer needs the same number of inputs for each example. The loading code converts every readable image to RGB, so every pixel has a red, green, and blue value. It then resizes every photo to 32 × 32. That gives each photo 1,024 pixel positions and `32 × 32 × 3 = 3,072` channel values.
+The photos in the ZIP come in different sizes. I resized them all to **32 × 32** so they would give the model the same number of inputs. I also converted them to RGB so each pixel would have a red, green, and blue value.
 
-Using 32 × 32 keeps the first layer smaller and the training run short. The trade-off is detail. The resize can soften features such as whiskers and small differences in ear shape. It also puts every photo into a square, so it can change the proportions of a photo whose original shape was rectangular.
+A photo now has `32 × 32 = 1,024` pixels. With three color values per pixel, that gives `1,024 × 3 = 3,072` numbers. Using small images keeps the model and training time down. It also means some details, like fine whiskers, can be harder to see in the resized photos.
 
-### Remove repeated images before making the split
+### Removing copies
 
-The notebook uses `sha256(image.tobytes()).digest()` as a compact key for the **resized RGB pixels**. This is a separate use of SHA-256 from the download checksum. The download checksum checks the whole ZIP. The image key lets the notebook group photos that have the same prepared pixels.
+I checked for duplicate photos after resizing and before the train and test split. The check compares the prepared pixels. The code gives each image a key with `sha256(image.tobytes()).digest()`. Photos with the same prepared pixels get the same key.
 
-The `seen` dictionary stores the index of the first image for each key. A repeated key with the same label needs only one representative. If a repeated key has a different label, `conflicting_images` records the key. During cleanup, `keep` excludes that entire group because the same input would otherwise have both answers.
+- `seen` remembers the first image for each key. If I find a copy with the same label, one is enough.
+- `conflicting_images` tracks keys that show up with both labels. I drop those groups because the same input would have two answers.
+- `keep` stores the indices of the images that stay. I use it on the photos and labels together.
 
-The code reports **30 repeated copies** beyond the first representative for each key. This count includes any extra copies within conflicting groups. The code also drops the first representative of each of the **2 conflicting groups**. The count therefore goes from `24,997` readable photos to `24,997 − 30 − 2 = 24,965` usable examples.
+The code counted **30 repeated copies** beyond the first image in each group. It also dropped the first image from each of the **2 groups** with conflicting labels. That left `24,997 − 30 − 2 = 24,965` photos.
 
-Doing this before the split prevents matching prepared pixels from appearing on both sides. If an exact copy gets into both training and test data, the test score can give the model credit for recognizing a photo it already saw. Cropped, recolored, or slightly altered copies can still produce different pixel arrays. The notebook checks exact equality at the resized image level.
+I did this before splitting so that an exact copy of a training photo would stay out of the test set. If someone crops a photo or changes its colors, the resized numbers may be different and the copy can get through this check.
 
-### Flatten and scale the pixels
+### Making one row per photo
 
-The main conversion is `images[keep].reshape(len(keep), -1).astype("float32") / 255`. Each part does one job.
+The line below does the flattening and scaling.
 
-| Part | What it does |
-| --- | --- |
-| `images[keep]` | Selects the photos that survived cleanup. |
-| `.reshape(len(keep), -1)` | Keeps one row per photo and flattens the color values into 3,072 columns. NumPy calculates the column count from the original shape. |
-| `.astype("float32")` | Converts the pixel integers to floating-point values. |
-| `/ 255` | Scales the pixel values from `0–255` to `0–1`. |
-
-For example, a pixel with RGB values `[0, 128, 255]` becomes approximately `[0.0, 0.502, 1.0]`. The order of the channel values stays the same. The scale for every example comes from the known pixel range, so the notebook can apply the same fixed constant to every photo without estimating statistics from the data.
-
-Flattening puts the RGB values in a consistent order. Each column still corresponds to a particular position and channel in the resized photo. The Dense model processes these columns as a long row and has no built-in operation that moves the same filter across neighboring pixels.
-
-### Prepare the target labels
-
-`labels = labels[keep]` applies the same selection to the labels, so photo `X[i]` and label `labels[i]` still belong together. `keras.utils.to_categorical(labels, num_classes=2)` then converts the integers to one-hot labels.
-
-| Class | Integer label | One-hot label | Output index |
-| --- | ---: | --- | ---: |
-| Cat | `0` | `[1, 0]` | `0` |
-| Dog | `1` | `[0, 1]` | `1` |
-
-One-hot encoding gives the true class a `1` and the other class a `0`. It matches the two output scores that the model will produce. The notebook keeps the integer labels too. They are convenient for stratifying the splits and comparing the predicted class with the actual class.
-
-The final shapes before splitting are `X.shape = (24965, 3072)` and `y.shape = (24965, 2)`. `np.isfinite(X).all()` checks that every prepared feature is finite. The stored output shows that the scaled values range from `0.0` to `1.0`.
-
-## 4. How the data is split
-
-The notebook builds a list of photo indices with `np.arange(len(y))` and splits that list with `train_test_split()`. It uses the resulting indices on the pixel arrays and both forms of the labels. This keeps each photo matched with its answer through the split.
-
-The split uses `test_size=0.2`, `stratify=labels`, and `random_state=12`. **Stratification** keeps the cat-to-dog ratio close to the ratio in the full cleaned dataset. The random seed makes the same choice of indices reproducible when the input and software behavior match. An assertion checks that the training and test index lists have zero overlap.
-
-| Partition | Photos | Role |
-| --- | ---: | --- |
-| Training pool | 19,972 | Supplies all the training and validation folds. After choosing the learning rate, the final model trains on this whole pool. |
-| Held-out test set | 4,993 | Supplies the final reported results. Its labels play no part in selecting the learning rate or adjusting the weights. |
-
-The term **validation set** refers to a held-out part of the training pool inside a cross-validation run. A different part takes that role in each fold. The **test set** is a separate group of photos that stays fixed for the whole assignment. The model selection code uses validation results, so the test set can serve as a separate check once those decisions have been made.
-
-## 5. How the Dense network works
-
-`build_model()` returns a Keras `Sequential` model. Sequential means the layers run in order. Each layer passes its output to the layer that follows it.
-
-```text
-3,072 scaled RGB values
-    → Dense layer with 128 units and ReLU
-    → Dense layer with 64 units and ReLU
-    → Dense layer with 2 units and softmax
-    → Cat or Dog, using the larger score
+```python
+X = images[keep].reshape(len(keep), -1).astype("float32") / 255
 ```
 
-### What a Dense unit calculates
+`images[keep]` picks the photos I want to use. `reshape` puts each photo into one long row, and `-1` lets NumPy work out how many columns are needed. I convert the whole numbers to decimals and divide by `255`. For example, a pixel with values `[0, 128, 255]` becomes about `[0.0, 0.502, 1.0]`. Every value is now between `0` and `1`. The notebook checks that the finished input has no `NaN` or infinite values.
 
-A Dense unit uses a weight for every number coming into it. It multiplies each input by its weight, adds the products, and adds one bias. The result before activation is a weighted sum. The activation function then transforms that sum before the network passes it on.
+### Matching the labels to the output
 
-For a toy unit with two inputs, suppose the inputs are `0.8` and `0.2`, the weights are `0.5` and `-0.4`, and the bias is `0.1`. The weighted sum is `0.8 × 0.5 + 0.2 × (-0.4) + 0.1 = 0.42`. A real unit in the first hidden layer does this with 3,072 inputs. Different units have their own sets of weights and can respond to different combinations of pixels.
+The network will return two scores. I used one-hot encoding so the correct answer also has two places. Keras does this with `to_categorical()`.
 
-The hidden layers use **ReLU**, which returns `max(0, z)` for an incoming sum `z`. The toy value `0.42` would pass through as `0.42`, and `-0.42` would become `0`. ReLU adds a nonlinear step. Without a nonlinear activation between the hidden Dense layers, stacking those weighted sums and biases would still produce a single affine transformation.
+| Actual class | Original label | Label used for training |
+| --- | ---: | --- |
+| Cat | `0` | `[1, 0]` |
+| Dog | `1` | `[0, 1]` |
 
-The final layer uses **softmax**. Softmax converts the two output scores before activation, often called *logits*, into two values that sum to 1. In a hypothetical output of `[0.27, 0.73]`, index `1` is larger, so the prediction is Dog. The first output always corresponds to Cat because the notebook uses the same class order for encoding and predictions.
+`X` has shape `(24965, 3072)` because it has one row per photo and 3,072 pixel values in each row. `y` has shape `(24965, 2)` because each photo has a two-number answer. I keep the integer labels too, since they are useful when splitting the data and reading the test results.
 
-### Where the 401,730 parameters come from
+## 4. Splitting the data
 
-Each Dense layer needs one weight for every input-to-unit connection plus one bias per unit. For a layer with `m` inputs and `n` units, the total is `m × n + n`.
+I used `train_test_split()` with `test_size=0.2` to keep 20% aside. I split the photo indices and use the same indices to select the pixels and labels. This makes sure each photo stays with the right answer.
 
-| Layer | Inputs per unit | Units | Weights | Biases | Total |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| First hidden layer | 3,072 | 128 | 393,216 | 128 | 393,344 |
-| Second hidden layer | 128 | 64 | 8,192 | 64 | 8,256 |
-| Output layer | 64 | 2 | 128 | 2 | 130 |
-| **Total** | | | **401,536** | **194** | **401,730** |
+| Part | Number of photos | What I used it for |
+| --- | ---: | --- |
+| Training pool | 19,972 | Comparing the learning rates and training the final model. |
+| Test set | 4,993 | Checking the final model after training. |
 
-The `keras.Input()` declaration tells Keras to expect 3,072 values per photo. It introduces zero trainable parameters. Most of the weights belong to the first hidden layer because each of its 128 units takes all 3,072 input values. The next layer narrows the representation to 64 values. The final layer needs two units because there are two possible answers.
+I used `stratify=labels` to keep about the same proportion of cats and dogs in both parts. `random_state=12` sets the seed for the split, and the notebook checks that the two index lists have no photo in common.
 
-## 6. How training changes the weights
+There is also a **validation** part during training. It comes from the 19,972 photos in the training pool. I use it when deciding which learning rate to pick. After I have made that choice and trained the final model, I use the separate test set to get the final result.
 
-### Loss and accuracy measure different things
+## 5. Building the network
 
-The notebook compiles the model with **categorical cross-entropy** as the loss and **accuracy** as a metric. The loss gives SGD a quantity to reduce. Accuracy counts correct predictions and makes the result easier to read.
+I used a Keras `Sequential` model, which runs the layers one after the other. This is what happens to one row of input.
 
-For a one-hot label, categorical cross-entropy for one example reduces to `−log(p_true)`, where `p_true` is the softmax value assigned to the actual class. If the photo is a cat and the scores are `[0.8, 0.2]`, the loss is `−log(0.8)`, about `0.223`. The output `[0.2, 0.8]` gives the true cat class only `0.2`, so the loss is about `1.609`.
+```text
+3,072 pixel values
+    → 128 Dense units with ReLU
+    → 64 Dense units with ReLU
+    → 2 Dense units with softmax
+    → Cat or Dog
+```
 
-Two predictions can both get the label right and have different losses. If the actual class is Cat, `[0.51, 0.49]` and `[0.90, 0.10]` both count as correct. The second has a lower cross-entropy because it gives the actual class a larger score. The test loss therefore adds information beyond the percentage of correct labels.
+For one Dense unit, I can think of it as multiplying every input by a weight, adding those numbers, and adding one extra value called the **bias**. A small example with just two inputs would be `0.8 × 0.5 + 0.2 × (-0.4) + 0.1 = 0.42`. The first layer does this with 3,072 inputs for each unit. Each unit has its own weights.
 
-### One batch, one epoch, and the role of SGD
+I used **ReLU** in the hidden layers. It keeps a positive number as it is and changes a negative number to zero. So `0.42` stays `0.42`, while `-0.42` becomes `0`. This helps the model learn more than a single weighted sum of the pixels.
 
-A **batch** is a small group of training photos. The notebook sets the batch size to 256. For each batch, Keras performs this sequence.
+For the last layer I used **softmax**. It gives me two scores that add up to `1`. If I get `[0.27, 0.73]`, the second score is higher, so I pick Dog.
 
-1. Pass the batch through the layers to get predictions. This is the **forward pass**.
-2. Compare those predictions with the one-hot labels and calculate the batch loss.
-3. Work backwards through the layers to calculate how the loss changes when each weight or bias changes. This is **backpropagation**. The resulting values are called **gradients**.
-4. Use SGD to update the parameters in a direction intended to reduce the loss. Repeat with the next batch.
+### Counting the weights and biases
 
-An **epoch** is one pass through the training photos for that run. Every fold model trains for 20 epochs, and the final model also trains for 20 epochs.
+I counted one weight for every input to each unit and one bias for each unit. For the first layer, that is `3,072 × 128 + 128 = 393,344`.
 
-### Which settings were chosen and which were learned
+| Layer | Number of weights | Number of biases | Total |
+| --- | ---: | ---: | ---: |
+| First hidden layer | 393,216 | 128 | 393,344 |
+| Second hidden layer | 8,192 | 64 | 8,256 |
+| Output layer | 128 | 2 | 130 |
+| **All three layers** | **401,536** | **194** | **401,730** |
 
-| Setting | Value in the notebook | What it controls |
+Keras prints the same total in the notebook. Most of it comes from the first layer because all 3,072 inputs are connected to each of its 128 units.
+
+## 6. Training the model
+
+I used **categorical cross-entropy** for the loss. In this assignment it looks at the score given to the correct class. If the photo is a cat and the model gives Cat a score of `0.8`, the loss is `−log(0.8)`, about `0.223`. If it gives Cat only `0.2`, the loss is about `1.609`. The model tries to lower this loss during training. Accuracy is the fraction of labels it guessed correctly.
+
+I grouped the photos into batches of 256. For each batch, the model predicts the labels, calculates the loss, and works out how changing each weight would affect the loss. That step is called **backpropagation**, and the values it calculates are called **gradients**. I used stochastic gradient descent (SGD) to update the weights using those gradients. Going through all the training photos once is **one epoch**. I used **20 epochs** in each run.
+
+| Setting | Value | How I understand it |
 | --- | --- | --- |
-| Optimizer | SGD | Uses gradients from batches to update the weights and biases. |
-| Learning rate | `0.01` or `0.03` during the comparison | Scales the parameter updates. A larger value makes larger steps when the other settings stay the same. |
-| Momentum | `0.9` | Carries some of the previous update direction forward. Repeated gradients in the same direction can build momentum, while opposing directions can partly cancel. |
-| Weight decay | `0.0005` | Applies a small shrinkage to the parameters during optimization. This is the regularization used by the notebook. |
-| Batch size | `256` | Sets how many photos the model handles in a full training batch. |
-| Epochs | `20` per fit | Sets how many times each fit passes through its training examples. |
+| Optimizer | SGD | Makes the weight updates using a batch at a time. |
+| Learning rate | `0.01` or `0.03` | Controls the size of the update. |
+| Momentum | `0.9` | Uses some of the previous update when making the next one. |
+| Weight decay | `0.0005` | Shrinks the weights a little during training to discourage very large values. |
+| Batch size | `256` | Number of photos in a full batch. |
+| Epochs | `20` | Number of passes through the training photos in each run. |
 
-The learning rate, layer sizes, batch size, and other settings in the table are **hyperparameters**. They come from the experiment setup. The values inside the weight matrices and bias vectors are **parameters**. SGD learns those values from the labelled photos. The notebook compares two learning rates and holds the other settings fixed, so it can see how that one change affects validation accuracy under this setup.
+The settings in this table are values I gave to the model. The weights and biases are values it learns while fitting the data.
 
-## 7. How cross-validation chooses the learning rate
+## 7. Trying two learning rates
 
-A single validation split gives a score on one group of photos. The notebook uses **five-fold stratified cross-validation** so every photo in the training pool contributes to the validation score once per learning rate.
+I tried `0.01` and `0.03`. I used **five-fold cross-validation** to compare them. I split the training pool into five smaller parts, each with about the same mix of cats and dogs. For the first run I trained on parts 2 to 5 and used part 1 to check the model. On the next run I used part 2 for the check, and so on. Each part had one turn as the validation set. Each validation part had 3,994 or 3,995 photos.
 
-`StratifiedKFold(n_splits=5, shuffle=True, random_state=12)` forms five almost equal parts with similar class proportions. Each validation fold has 3,994 or 3,995 photos. In each run, the other four folds supply 15,977 or 15,978 training photos.
+I started a fresh model each time. For a given fold, both learning rates used the same split and random seed. This let me compare the rates with the other settings kept the same. During each run only the four training parts were used to update the weights. The validation part gave me another accuracy and loss reading after each epoch.
 
-| Run | Folds used to train | Fold used to validate |
-| --- | --- | --- |
-| 1 | 2, 3, 4, 5 | 1 |
-| 2 | 1, 3, 4, 5 | 2 |
-| 3 | 1, 2, 4, 5 | 3 |
-| 4 | 1, 2, 3, 5 | 4 |
-| 5 | 1, 2, 3, 4 | 5 |
+I saved the accuracy and loss values from all 20 epochs. To pick the rate, I used the **validation accuracy at epoch 20** for each of the five folds and took the average.
 
-For each learning rate, the notebook repeats all five runs. Before training each fold, it clears Keras's previous model state, sets the random seed to `12 + fold`, and calls `build_model()` again. This starts each fold with a fresh model. The two learning rates use the same split and seed for a given fold, which makes their comparison more consistent.
-
-`model.fit()` receives the four fitting folds as its training data and the remaining fold as `validation_data`. The validation examples produce accuracy and loss measurements after each epoch. Only the fitting examples supply gradients and weight updates in that run.
-
-The `history` dictionary has 20 logged values for each of `accuracy`, `loss`, `val_accuracy`, and `val_loss`. The selection uses `history["val_accuracy"][-1]`, the validation accuracy at **epoch 20**. For each learning rate, the code averages those five end-of-training results.
-
-| Validation fold | Learning rate `0.01` | Learning rate `0.03` |
+| Validation fold | Rate `0.01` | Rate `0.03` |
 | --- | ---: | ---: |
 | 1 | 65.16% | 62.15% |
 | 2 | 64.16% | 64.21% |
 | 3 | 62.42% | 63.75% |
 | 4 | 65.92% | 63.82% |
 | 5 | 64.55% | 64.85% |
-| **Mean at epoch 20** | **64.44%** | **63.75%** |
+| **Average** | **64.44%** | **63.75%** |
 
-`best_rate = max(scores, key=scores.get)` selects `0.01`. It was ahead by about 0.69 percentage points on the five-fold mean. The fold scores vary, and `0.03` actually did better on folds 2, 3, and 5. The larger advantage for `0.01` on folds 1 and 4 gave it the higher average. The experiment compares these two choices for this architecture and training setup.
+I picked **`0.01`** because its average was higher. The difference was small, and `0.03` did better on three individual folds. With `0.01` chosen, I started a fresh model again and trained it for 20 epochs on **all 19,972 photos in the training pool**. I used this last model for the test.
 
-After selection, the notebook makes another fresh model, sets seed `12`, and trains it on all **19,972** photos in the training pool with learning rate `0.01`. It uses the full pool now because the learning-rate comparison is over. The test photos stay separate. The final prediction comes from this one refitted model.
+In the saved run, the ten cross-validation fits took **30.3 seconds** in total, and the final fit took **3.0 seconds**. The notebook reports **33.3 seconds** from starting cross-validation to finishing the final fit. This timer starts after the photos have been loaded and prepared.
 
-The two learning rates and five folds make **10 cross-validation fits**, each of 20 epochs. The final 20-epoch fit makes 11 fits in all. The saved run measured **30.3 seconds** for cross-validation, **3.0 seconds** for the final fit, and **33.3 seconds** from the start of cross-validation to the end of model fitting. The timer starts after data preparation. Downloading and loading the JPEGs happen earlier, and test evaluation happens later. Another machine can give different times.
+## 8. Reading the training plots
 
-## 8. What the training curves show
+The plots show the training and validation history for the chosen learning rate. For each epoch, I took the average of the five fold results. The solid line shows training and the dashed line shows validation.
 
-The accuracy and loss plots show the five-fold average for the selected `0.01` learning rate. To draw the value at epoch 5, for example, the notebook takes the epoch-5 value from each of the five histories and averages them. It repeats that for the training and validation metrics at all 20 epochs. The solid lines are training values, and the dashed lines are validation values.
+- In the accuracy plot, the training line goes from about **56% to 70%**. The validation line improves at first, then stays around **64%** for much of the second half.
+- In the loss plot, training loss keeps going down. Validation loss drops early and then goes up and down a little. It ends at about **0.64**.
 
-- **Accuracy.** Training accuracy climbs from roughly 56% to 70%. Validation accuracy improves early and spends much of the second half around 63–65%. Its final mean is 64.44%.
-- **Loss.** Training loss trends down throughout the run. Validation loss drops early and then moves up and down around a narrower range. It finishes around 0.64.
+After about epoch 10, the model keeps getting better at the photos it is learning from, while the validation results move much less. I took that as a sign of some **overfitting**. The validation photos help show how much of the improvement carries over to photos the model has left out of training.
 
-Around epoch 10 and after, the model keeps improving on the photos used to update its weights, while the validation curve changes much less. That widening gap suggests **some overfitting**. The model is learning patterns that help it classify the fitting photos, and only part of that improvement carries over to the validation photos. The plots record the cross-validation fits, and the test table comes from the separate final refit.
+## 9. Checking the test results
 
-## 9. What the test results mean
+I ran `model.evaluate()` on the 4,993 test photos to get accuracy and loss. I also used `model.predict()` to get a pair of scores for every photo. The code takes the position of the larger score using `argmax`. The notebook checks that comparing those predicted labels with the actual labels gives the same accuracy as `evaluate()`.
 
-### The evaluation code
-
-`model.evaluate(X_test, y_test)` produces the final model's test loss and test accuracy. `model.predict(X_test)` produces two scores per photo. Applying `.argmax(axis=1)` picks the higher score in each row and returns its integer class ID. The notebook checks that the accuracy from `evaluate()` agrees with the fraction of IDs that match `test_labels`.
-
-| Test quantity | Result |
+| Test result | Value |
 | --- | ---: |
-| Number of test photos | 4,993 |
 | Correct predictions | 3,338 |
-| Incorrect predictions | 1,655 |
+| Wrong predictions | 1,655 |
 | Test accuracy | 66.85% |
-| Test categorical cross-entropy | 0.6129 |
-| Accuracy from always predicting the majority class | 50.01% |
+| Test loss | 0.6129 |
 
-The test set contains 2,496 cats and 2,497 dogs. A baseline that calls every test photo Dog gets `2,497 / 4,993 = 50.01%`. The model scores about **16.84 percentage points higher**. The baseline is a useful reference because the two classes have nearly the same number of test photos.
+I also checked what would happen if I guessed Dog for every photo, because Dog was the slightly bigger group in the test set. That would get `2,497 / 4,993 = 50.01%`. This gave me a simple number to compare with the model's **66.85%**.
 
-### Read the confusion matrix
+### Where the model made mistakes
 
-Rows represent the actual labels and columns represent what the model predicted. The upper-left and lower-right cells are the correct predictions.
+In the confusion matrix, the rows tell me what the photo actually was. The columns tell me what the model guessed.
 
-| Actual class | Predicted Cat | Predicted Dog | Total actual |
+| Actual photo | Guessed Cat | Guessed Dog | Total |
 | --- | ---: | ---: | ---: |
 | Cat | **1,722** | 774 | 2,496 |
 | Dog | 881 | **1,616** | 2,497 |
-| **Total predicted** | **2,603** | **2,390** | **4,993** |
+| **Total** | **2,603** | **2,390** | **4,993** |
 
-You can recover the test accuracy from this table by adding the diagonal and dividing by the total, `(1,722 + 1,616) / 4,993 = 66.85%`. The other cells show how the mistakes break down. The model labelled 881 dogs as cats and 774 cats as dogs. It predicted Cat 2,603 times, more often than the 2,496 cats actually present.
+The two bold numbers in the Cat and Dog rows are correct predictions. Adding them gives `1,722 + 1,616 = 3,338`. Dividing by `4,993` gives the test accuracy. I can also see that more dogs were called cats (881) than cats were called dogs (774).
 
 ### Precision, recall, and F1-score
 
-The classification report treats each class as the class of interest in turn. For Cat, a true positive is an actual cat predicted as Cat. A false positive is an actual dog predicted as Cat. A false negative is an actual cat predicted as Dog.
+I read these scores one class at a time. For Cat, precision asks, “Of the times the model guessed Cat, how often was it right?” Recall asks, “Of the actual cats, how many did the model find?”
 
-- **Cat precision** asks how many Cat predictions were right. It uses the Predicted Cat column as its denominator, so it is `1,722 / 2,603 ≈ 0.662`.
-- **Cat recall** asks how many actual cats the model found. It uses the Actual Cat row as its denominator, so it is `1,722 / 2,496 ≈ 0.690`.
-- **Cat F1** combines precision and recall using their harmonic mean, `2 × precision × recall / (precision + recall)`. Using the unrounded precision and recall gives about `0.675`.
-
-For Dog, the same calculations use the Predicted Dog column and the Actual Dog row. The model found a smaller share of the actual dogs than of the actual cats, even though its Dog predictions had slightly higher precision.
+- Cat precision is `1,722 / 2,603`, about **0.662**.
+- Cat recall is `1,722 / 2,496`, about **0.690**.
+- Cat F1 combines the two. The formula is `2 × precision × recall / (precision + recall)`, which gives about **0.675** using the unrounded numbers.
 
 | Class or average | Precision | Recall | F1-score | Support |
 | --- | ---: | ---: | ---: | ---: |
@@ -272,25 +219,22 @@ For Dog, the same calculations use the Predicted Dog column and the Actual Dog r
 | Macro average | 0.669 | 0.669 | 0.668 | 4,993 |
 | Weighted average | 0.669 | 0.669 | 0.668 | 4,993 |
 
-**Support** is the number of actual test examples of that class. The **macro average** gives Cat and Dog equal weight. The **weighted average** weights them by their support. The two classes differ by one photo here, so both averages round to the same values. The report displays overall accuracy as `0.669` because it rounds to three decimal places. The notebook's percentage output uses two decimal places and shows `66.85%`.
+Support is just the number of actual photos of that class. The macro average counts Cat and Dog equally. The weighted average gives the class with more photos more weight. The two classes are almost the same size here, so the averages round to the same values. From the recall column, I can see that the model found about **69% of the cats** and **65% of the dogs**.
 
-## 10. What the assignment shows and where it is limited
+## 10. What I noticed
 
-The Dense network learned enough from the resized RGB pixels to beat the majority-class baseline on the held-out photos. The run also shows the difference between improving on the training examples and improving on unseen photos. By the later epochs, training accuracy continues to rise while validation accuracy stays around 64%. The final held-out evaluation puts the model at 66.85%, with about one in three test photos classified incorrectly.
+The model got about two out of three photos right. That was better than guessing the biggest class for every photo. It still made 1,655 mistakes. The training plot also shows why I kept a test set. A model can improve on the photos it is learning from while making very little progress on photos it has left out.
 
-The test accuracy is higher than the 64.44% mean cross-validation accuracy at the chosen rate. The five validation scores came from five models trained on four folds each. The test score came from a fresh model trained on the whole training pool and scored on a different group of photos. The larger fitting set and the mix of evaluation photos can both affect the difference.
+The test accuracy was a little higher than the average validation accuracy. The final model trained on the whole training pool, and I checked it on a different group of photos. Each fold model trained on four of the five parts, so there were fewer photos to learn from in those runs.
 
-The 32 × 32 input retains coarse color and shape information. Fine details can disappear during the resize. The Dense architecture also learns from fixed pixel positions, so handling changes in pose, framing, or background can be difficult. The test score reflects the combined choices for image size, hidden-layer size, and weight decay. The experiment varies only the learning rate.
+The small images made it possible to fit the model with a manageable number of inputs. At that size, some details that help tell a cat from a dog can disappear. The Dense layers also work with fixed pixel positions, so images taken from different angles or with different backgrounds can be difficult. I only compared the learning rates in this assignment, so the results tell me how this particular setup worked.
 
-## 11. How to run the notebook again
+## 11. Running the notebook again
 
-1. Open the `.ipynb` file in Jupyter or Colab and select a Python 3 kernel.
-2. If the environment needs the packages, install them with the command below. NumPy is also used by the notebook and comes with the required numerical packages.
-3. Run all cells in order. Allow about 787 MiB for the first dataset download. Keras can reuse the cached archive in a later run from the same environment.
-4. Check the preprocessing counts first, then the fold results and selected rate, and finally the test loss, accuracy, and confusion matrix. Training durations can change with the hardware. Differences in package versions and numeric execution can also change a rerun's scores.
+Open the Jupyter notebook in Jupyter or Colab and run the cells in order. For a local environment, install the packages first.
 
 ```bash
 python -m pip install tensorflow scikit-learn pillow matplotlib
 ```
 
-The assignment files save the code and the outputs from the completed run. Running the training cells rebuilds the model weights in the notebook session.
+The notebook downloads the dataset the first time if Keras has no copy in its cache. The ZIP is about **787 MiB**. After the training cells finish, the notebook prints the fold results and test scores and shows the plots. The time can be different on another computer.

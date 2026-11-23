@@ -1,21 +1,19 @@
-# DNN Assignment 1 — Cats vs Dogs
+# DNN Assignment 1 - Cats vs Dogs
 
-This first-semester assignment trains a Dense neural network in Keras to classify photos as cats or dogs. The notebook reads the Microsoft PetImages dataset, removes duplicate images, and turns each photo into a row of 3,072 scaled RGB values.
+For my first DNN assignment, I used Keras to train a model that tells cats and dogs apart in photos. I resized the photos to 32 × 32 and gave their pixel values to a network with two hidden Dense layers.
 
-The model has two hidden Dense layers with ReLU and a two-unit softmax output. It compares two learning rates using five-fold cross-validation, then trains the final model with SGD for 20 epochs. The saved run classified **3,338 of 4,993 held-out photos correctly (66.85%)**.
+I tried two learning rates using five-fold cross-validation. After picking `0.01`, I trained the final model for 20 epochs with SGD. It got **3,338 out of 4,993 test photos right (66.85%)**.
 
 ## Files
 
-- [Jupyter notebook](DL_assignment_Student2026CS05046.ipynb) — Code, saved results, and charts.
-- [PDF assignment](DL_assignment_student2026CS05046.pdf) — Printable version of the completed notebook.
-- [Detailed explanation](explaination.md) — A step-by-step guide to the code and results.
+- [Notebook](DL_assignment_Student2026CS05046.ipynb) with the code, plots, and results.
+- [PDF](DL_assignment_student2026CS05046.pdf) of the completed notebook.
+- [Detailed explanation](explaination.md) of what I did and how I read the results.
 
-## Run the notebook
+## Running it
 
-Open the notebook in Jupyter or Colab and run the cells in order. For a local Python environment, install the dependencies first.
+Open the notebook in Jupyter or Colab and run the cells in order. For a local setup, install the packages below first. The dataset download is about 787 MiB.
 
 ```bash
 python -m pip install tensorflow scikit-learn pillow matplotlib
 ```
-
-The notebook downloads the dataset on the first run. The archive is about 787 MiB.
